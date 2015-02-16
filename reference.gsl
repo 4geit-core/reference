@@ -1,0 +1,182 @@
+.template 0
+
+# function global.dummy_node_func(item, nodename)
+#   echo my.nodename + ', ' + my.item
+# endfunction
+
+function global.reference__get_node(path, nodename, init)
+  my.init_path = my.path
+  my.init ?= project
+  my.xml = my.init
+
+  # for_each_item(my.init_path, 'dummy_node_func', '.', my.nodename)
+
+  # log('locate before: ' + my.xml.string())
+
+  while my.xml <> project & string.substr(my.path, 0, 0) = ":"
+    my.xml = my.xml.parent()
+    my.path = string.substr(my.path, 1)
+  endwhile
+
+  # log('locate after: ' + my.xml.string())
+  
+  while string.cntch(my.path, '.')
+    my.prefix = string.prefix(my.path, '.')
+    my.xml = my.xml->$(my.nodename:)((defined(id) & id = my.prefix) | (defined(name) & name = my.prefix))?
+    # log('my.xml: ' + my.xml)
+    my.path = string.substr(my.path, string.length(my.prefix)+1)
+  endwhile
+
+  # log(my.xml.string())
+  my.xml = my.xml->$(my.nodename:)((defined(id) & id = my.path) | (defined(name) & name = my.path))?
+
+  return my.xml
+endfunction
+
+function global.reference__get_node_attempt(path, nodename, context)
+  my.res = reference__get_node(my.path, my.nodename, my.context)?
+  # log('first attempt ' + my.res?.string())
+
+  if !defined(my.res)
+    my.res = reference__get_node(my.path, my.nodename)?
+    # log('second attempt ' + my.res?.string())
+  endif
+
+  if !defined(my.res)
+    error('$(my.nodename:) "$(my.path:)" not found')
+  endif
+
+  return my.res?
+endfunction
+
+function global.reference__get_node_name(node, nodename)
+  my.nodename ?= name(my.node)
+
+  my.s = "$(string__rename(my.node.name))"
+  my.node = my.node.parent()
+  while defined(my.node) & my.node.name() = my.nodename
+    my.s = "$(string__rename(my.node.name)).$(my.s:)"
+    my.node = my.node.parent()
+  endwhile
+  
+  return my.s
+endfunction
+
+function global.reference__get_node_id(node, delim, nodename)
+  my.nodename ?= name(my.node)
+  my.delim ?= '.'
+
+  my.s = "$(my.node.id:)"
+  my.node = my.node.parent()
+  while defined(my.node) & my.node.name() = my.nodename
+    my.s = "$(my.node.id:)$(my.delim:)$(my.s:)"
+    my.node = my.node.parent()
+  endwhile
+  
+  return my.s
+endfunction
+
+function global.reference__get_node_attribute(node, attribute, delim, nodename)
+  my.nodename ?= name(my.node)
+  my.delim ?= '.'
+  my.attribute ?= 'id'
+
+  my.s = "$(my.node.$(my.attribute:):)"
+  my.node = my.node.parent()
+  while defined(my.node) & my.node.name() = my.nodename
+    my.s = "$(my.node.$(my.attribute:):)$(my.delim:)$(my.s:)"
+    my.node = my.node.parent()
+  endwhile
+  
+  return my.s
+endfunction
+
+function global.reference__get_node_length(node, nodename)
+  my.nodename ?= name(my.node)
+
+  my.count = 0
+  my.node = my.node.parent()
+  while defined(my.node) & my.node.name() = my.nodename
+    my.count += 1
+    my.node = my.node.parent()
+  endwhile
+  
+  return my.count
+endfunction
+
+function global.reference__print_node(node, nodename)
+  my.nodename ?= name(my.node)
+  my.n = reference__get_node(my.node, my.nodename)?
+
+  if !defined(my.n)
+    error('$(my.nodename:) "$(my.node:)" not found')
+  endif
+
+  my.n = reference__get_node_name(my.n, my.nodename)
+
+  return my.n
+endfunction
+
+function global.reference__override_attribute(n1, nn, attribute)
+  if defined(my.n1.$(my.attribute))
+    my.nn.$(my.attribute) = my.n1.$(my.attribute)
+  endif
+endfunction
+
+function global.reference__append_attribute(n1, nn, attribute)
+  my.nn.$(my.attribute) ?= ""
+  if defined(my.n1.$(my.attribute))
+    my.nn.$(my.attribute) += " " + my.n1.$(my.attribute)
+  endif
+endfunction
+
+function global.reference__override_reference(n1, origin, nodename, context)
+  my.nn = my.context->$(my.nodename)?(!defined(ref) & defined(name) & name = my.n1.ref)?
+
+  if !defined(my.nn)
+    return
+  endif
+
+  reference__override_attribute(my.n1, my.nn, 'id')
+  reference__override_attribute(my.n1, my.nn, 'name')
+  reference__append_attribute(my.n1, my.nn, 'description')
+  define my.nn.origin = my.origin
+endfunction
+
+function global.reference__replace_by_reference(n1, n2, node_src, node_dst, context)
+  my.nodename = "$(my.node_dst:)_$(item():)"
+  copy my.n2 to my.context before my.n1 as $(my.nodename:)
+  # log(my.n2.string())
+  my.origin = ""
+  if defined(my.n2.id)
+    my.origin = reference__get_node_attribute(my.n2, 'id')
+  else
+    my.origin = reference__get_node_attribute(my.n2, 'name')
+  endif
+  reference__override_reference(my.n1, my.origin, my.nodename, my.context)
+  delete my.n1
+  move my.context->$(my.nodename) to my.context as $(my.node_dst:)
+endfunction
+
+function global.reference__process(node_src, node_dst, context)
+  my.node_dst ?= my.node_src
+  my.context ?= project
+
+  for my.context. as ii where ii.name()?"" <> ""
+    reference__process(my.node_src, my.node_dst, ii)
+  endfor
+
+  for my.context.$(my.node_dst:) as n where defined(n.ref)
+    # log(n.string())
+    my.nn = reference__get_node_attempt(n.ref, my.node_src, my.context)?
+    if !defined(my.nn)
+      next
+    endif
+    if defined(my.nn) & my.nn <> n
+      # log('found: "$(my.nn.string():)"')
+      reference__replace_by_reference(n, my.nn, my.node_src, my.node_dst, my.context)
+    endif
+  endfor
+endfunction
+
+.endtemplate

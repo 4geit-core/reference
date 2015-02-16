@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+
+<core name="reference" version="0.1.0">
+  <core name="string" required_version="0.1.0"/>
+
+  <function name="get_node"/>
+  <function name="get_node_attempt"/>
+  <function name="get_node_name"/>
+  <function name="get_node_id"/>
+  <function name="get_node_attr"/>
+  <function name="get_node_length"/>
+  <function name="print_node"/>
+  <function name="override_attribute"/>
+  <function name="append_attribute"/>
+  <function name="override_reference"/>
+  <function name="replace_by_reference"/>
+  <function name="process_references"/>
+</core>

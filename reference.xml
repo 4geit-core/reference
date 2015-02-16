@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
-<core name="reference" version="0.1.0">
-  <core name="string" required_version="0.1.0"/>
+<core name="reference" branch="master">
+  <core name="string" required_branch="master"/>
 
   <function name="get_node"/>
   <function name="get_node_attempt"/>

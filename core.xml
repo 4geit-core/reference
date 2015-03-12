@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 
-<core name="reference" branch="master">
+<core name="reference" branch="master" description="4i core library handling XML references">
   <core name="string" required_branch="master"/>
 
   <function name="get_node"/>

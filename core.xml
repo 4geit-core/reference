@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 
 <core name="reference" branch="master" description="4i core library handling XML references">
+  <core name="logger" required_branch="master"/>
   <core name="string" required_branch="master"/>
 
   <function name="get_node"/>
@@ -14,5 +15,51 @@
   <function name="append_attribute"/>
   <function name="override_reference"/>
   <function name="replace_by_reference"/>
-  <function name="process_references"/>
+  
+  <function name="process">
+Recursive replacement of node_src to node_dst (node_dst =
+node_src if none) based on the reference node.
+
+The following samples can all be processed based on the
+```
+following code line:
+.template 0
+reference__process("test")
+.endtemplate
+```
+
+Easy sample:
+```
+<project>
+  <test id="testid"/>
+  <test ref="testid"/>
+</project>
+```
+
+Nested sample:
+```
+<project>
+  <a>
+    <test id="testid"/>
+  </a>
+  <test ref="a.testid"/>
+</project>  
+```
+
+Nested sample 2:
+```
+<project>
+  <a>
+    <b>
+      <test id="testid"/>
+    </b>
+    <c>  
+      <test ref=":b.testid"/>
+    </c>
+  </a>
+</project>  
+```
+  </function>
+
+  <test name="process_easy" description="recursive replacement of the node test"/>
 </core>

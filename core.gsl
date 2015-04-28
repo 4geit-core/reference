@@ -17,50 +17,35 @@
 # Caner Candan <caner@candan.fr>, http://caner.candan.fr
 #
 
-# function global.dummy_node_func(item, nodename)
-#   echo my.nodename + ', ' + my.item
-# endfunction
-
 function global.reference__get_node(path, nodename, init)
-  my.init_path = my.path
   my.init ?= project
   my.xml = my.init
 
-  # for_each_item(my.init_path, 'dummy_node_func', '.', my.nodename)
-
-  # log('locate before: ' + my.xml.string())
-
-  while my.xml <> project & string.substr(my.path, 0, 0) = ":"
+  while my.xml <> my.init & string.substr(my.path, 0, 0) = ":"
     my.xml = my.xml.parent()
     my.path = string.substr(my.path, 1)
   endwhile
-
-  # log('locate after: ' + my.xml.string())
   
   while string.cntch(my.path, '.')
     my.prefix = string.prefix(my.path, '.')
     my.xml = my.xml->$(my.nodename:)((defined(id) & id = my.prefix) | (defined(name) & name = my.prefix))?
-    # log('my.xml: ' + my.xml)
     my.path = string.substr(my.path, string.length(my.prefix)+1)
   endwhile
 
-  # log(my.xml.string())
   my.xml = my.xml->$(my.nodename:)((defined(id) & id = my.path) | (defined(name) & name = my.path))?
 
   return my.xml
 endfunction
 
 function global.reference__get_node_attempt(path, nodename, context)
-  my.res = reference__get_node(my.path, my.nodename, my.context)?
-  # log('first attempt ' + my.res?.string())
-
-  if !defined(my.res)
+  if defined(my.context)
+    my.res = reference__get_node(my.path, my.nodename, my.context)?
+  else
     my.res = reference__get_node(my.path, my.nodename)?
-    # log('second attempt ' + my.res?.string())
   endif
 
   if !defined(my.res)
-    error('$(my.nodename:) "$(my.path:)" not found')
+    raw_error('$(my.nodename:) "$(my.path:)" not found')
   endif
 
   return my.res?
@@ -163,7 +148,6 @@ endfunction
 function global.reference__replace_by_reference(n1, n2, node_src, node_dst, context)
   my.nodename = "$(my.node_dst:)_$(item():)"
   copy my.n2 to my.context before my.n1 as $(my.nodename:)
-  # log(my.n2.string())
   my.origin = ""
   if defined(my.n2.id)
     my.origin = reference__get_node_attribute(my.n2, 'id')
@@ -184,16 +168,25 @@ function global.reference__process(node_src, node_dst, context)
   endfor
 
   for my.context.$(my.node_dst:) as n where defined(n.ref)
-    # log(n.string())
     my.nn = reference__get_node_attempt(n.ref, my.node_src, my.context)?
     if !defined(my.nn)
       next
     endif
     if defined(my.nn) & my.nn <> n
-      # log('found: "$(my.nn.string():)"')
       reference__replace_by_reference(n, my.nn, my.node_src, my.node_dst, my.context)
     endif
   endfor
+endfunction
+
+function reference__test__process_easy
+  my.content = XML.load_string("
+<project>
+  <testnode id=\"mytest\"/>
+  <testnode ref=\"mytest\"/>
+</project>
+")
+  global.reference__process("testnode", "testnode", my.content)
+  return count(my.content.testnode) = 2
 endfunction
 
 .endtemplate
